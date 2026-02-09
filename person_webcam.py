@@ -3,7 +3,8 @@ import fcntl
 import os
 
 # Create a lock file to prevent multiple instances
-lock_file_path = '/tmp/person_webcam.lock'
+# Use current directory instead of /tmp to avoid permission issues
+lock_file_path = os.path.join(os.path.dirname(__file__), '.person_webcam.lock')
 lock_file = open(lock_file_path, 'w')
 try:
     fcntl.lockf(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -11,8 +12,19 @@ except IOError:
     print("Another instance is already running.")
     sys.exit(0)
 
+# Verify X11 Display is available for X Forwarding
+if 'DISPLAY' not in os.environ:
+    print("[ERROR] DISPLAY environment variable not set.")
+    print("Make sure you connected with: ssh -X user@server")
+    sys.exit(1)
+else:
+    print(f"[INFO] Using DISPLAY: {os.environ['DISPLAY']}")
+
 import cv2
 from ultralytics import YOLO
+
+# Set OpenCV to use X11 backend explicitly
+os.environ['OPENCV_VIDEOIO_DEBUG'] = '1'
 
 def detect_person_yolov8():
     # Load pretrained YOLOv8s model
