@@ -1,3 +1,4 @@
 env/
 .python-version
 .person_webcam.lock
+person_detection_log.csv

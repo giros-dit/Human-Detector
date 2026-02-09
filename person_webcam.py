@@ -1,6 +1,8 @@
 import sys
 import fcntl
 import os
+import csv
+from datetime import datetime
 
 # Create a lock file to prevent multiple instances
 # Use current directory instead of /tmp to avoid permission issues
@@ -26,7 +28,12 @@ from ultralytics import YOLO
 # Set OpenCV to use X11 backend explicitly
 os.environ['OPENCV_VIDEOIO_DEBUG'] = '1'
 
-def detect_person_yolov8():
+def get_timestamp():
+    """Returns timestamp in format: YYYYMMDD_HHMMSS_mmm"""
+    now = datetime.now()
+    return now.strftime("%Y%m%d_%H%M%S_") + f"{now.microsecond // 1000:03d}"
+
+def detect_person_yolov8(csv_file="person_detection_log.csv"):
     # Load pretrained YOLOv8s model
     model = YOLO("yolov8n.pt")  # or 'yolov8s.pt' for more accuracy
 
@@ -36,7 +43,17 @@ def detect_person_yolov8():
         print("Webcam couldn't be opened.")
         return
 
+    # Initialize CSV file
+    csv_path = os.path.join(os.path.dirname(__file__), csv_file)
+    with open(csv_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['timestamp', 'event'])
+    
+    print(f"[INFO] Logging detection events to: {csv_path}")
     print("[INFO] Running YOLOv8 Person Detection. Press 'q' to quit.")
+    
+    # Track previous detection state
+    person_detected_prev = False
 
     while True:
         ret, frame = cap.read()
@@ -62,6 +79,17 @@ def detect_person_yolov8():
 
         cv2.putText(frame, f'Total Persons: {person_count}', (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
+
+        # Check if detection state changed
+        person_detected_now = person_count > 0
+        if person_detected_now != person_detected_prev:
+            timestamp = get_timestamp()
+            event = "person_detected" if person_detected_now else "person_lost"
+            with open(csv_path, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([timestamp, event])
+            print(f"[LOG] {timestamp} - {event}")
+            person_detected_prev = person_detected_now
 
         cv2.imshow("YOLOv8 Person Detection", frame)
 
