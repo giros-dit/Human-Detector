@@ -1,11 +1,14 @@
-import win32event
-import win32api
 import sys
-from winerror import ERROR_ALREADY_EXISTS
+import fcntl
+import os
 
-mutex = win32event.CreateMutex(None, False, 'name')
-last_error = win32api.GetLastError()
-if last_error == ERROR_ALREADY_EXISTS:
+# Create a lock file to prevent multiple instances
+lock_file_path = '/tmp/person_video.lock'
+lock_file = open(lock_file_path, 'w')
+try:
+    fcntl.lockf(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except IOError:
+    print("Another instance is already running.")
     sys.exit(0)
 
 import cv2
